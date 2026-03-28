@@ -221,6 +221,7 @@ function connect() {
 function handle(msg) {
   if (msg.type === 'init' || msg.type === 'company_event') {
     const d = msg.data;
+    if (d.start_time && !startTs) startTs = new Date(d.start_time + 'Z').getTime();
     if (d.company_name) document.getElementById('company-name').textContent = d.company_name;
     if (d.cycle !== undefined) document.getElementById('h-cycle').textContent = d.cycle;
     if (d.uptime) document.getElementById('h-uptime').textContent = d.uptime;
@@ -312,12 +313,26 @@ function updateDeptOutput(dept, output) {
   if (ll) ll.textContent = output.title || '—';
 }
 
-// Uptime ticker
+// Client-side uptime ticker (keeps ticking even if server is slow)
+let startTs = null;
+function tickUptime() {
+  if (!startTs) return;
+  const secs = Math.floor((Date.now() - startTs) / 1000);
+  const h = String(Math.floor(secs/3600)).padStart(2,'0');
+  const m = String(Math.floor((secs%3600)/60)).padStart(2,'0');
+  const s = String(secs%60).padStart(2,'0');
+  document.getElementById('h-uptime').textContent = `${h}:${m}:${s}`;
+}
+setInterval(tickUptime, 1000);
+
+// Poll server for cycle/state updates
 setInterval(() => {
   fetch('/api/state').then(r=>r.json()).then(d => {
-    if (d.uptime) document.getElementById('h-uptime').textContent = d.uptime;
+    if (d.start_time && !startTs) startTs = new Date(d.start_time + 'Z').getTime();
     if (d.cycle !== undefined) document.getElementById('h-cycle').textContent = d.cycle;
-  });
+    if (d.output_count !== undefined) document.getElementById('h-outputs').textContent = d.output_count;
+    if (d.total_revenue !== undefined) updateRevTotal(d.total_revenue);
+  }).catch(()=>{});
 }, 5000);
 
 connect();

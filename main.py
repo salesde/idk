@@ -86,18 +86,23 @@ def start(dry_run: bool, port: int):
 
         asyncio.create_task(open_browser())
 
+        from web.app import start_web_server, company_state, push_feed, manager
+
         if keys_ok and not dry_run:
-            # Run web server + agents in parallel
-            from web.app import start_web_server
-            from graphs.company_graph import run_company
-            await asyncio.gather(
-                start_web_server(port=port),
-                run_company(dry_run=False),
-            )
-        else:
-            # Just serve the web UI (setup page or dry-run dashboard)
-            from web.app import start_web_server
-            await start_web_server(port=port)
+            # Run agents in background — server stays alive even if agents crash
+            async def run_agents_safe():
+                from graphs.company_graph import run_company
+                try:
+                    await run_company(dry_run=False)
+                except Exception as e:
+                    logger.error("Company graph error: %s", e, exc_info=True)
+                    entry = push_feed("🚨", "SYSTEM",
+                        f"Error: {type(e).__name__}: {str(e)[:200]} — check terminal for details", "red")
+                    await manager.broadcast({"type": "feed", "data": entry})
+
+            asyncio.create_task(run_agents_safe())
+
+        await start_web_server(port=port)
 
     try:
         asyncio.run(run())
