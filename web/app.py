@@ -48,6 +48,65 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# ── Agent registry for user chat ─────────────────────────────────────────────
+
+AGENT_REGISTRY: dict[str, Any] = {}
+
+
+def _init_agent_registry() -> None:
+    """Create one BaseAgent instance per agent soul for user chat."""
+    global AGENT_REGISTRY
+    from core.base_agent import BaseAgent
+    from core.soul import get_soul
+    from core.config import get_settings
+    from agents.executives.ceo import CEO
+    from agents.executives.cto import CTO
+    from agents.executives.cmo import CMO
+    from agents.executives.cfo import CFO
+
+    settings = get_settings()
+    try:
+        AGENT_REGISTRY = {
+            "Marcus": CEO(),
+            "Aiden":  CTO(),
+            "Zara":   CMO(),
+            "Nova":   CFO(),
+            "Iris":   BaseAgent(soul=get_soul("researcher"),    model=settings.research_model),
+            "Kai":    BaseAgent(soul=get_soul("tiktok_head"),   model=settings.worker_model),
+            "Sage":   BaseAgent(soul=get_soul("youtube_head"),  model=settings.worker_model),
+            "Rex":    BaseAgent(soul=get_soul("seo_head"),      model=settings.worker_model),
+            "Mia":    BaseAgent(soul=get_soul("dropship_head"), model=settings.worker_model),
+        }
+        logger.info("Agent registry initialised with %d agents", len(AGENT_REGISTRY))
+    except Exception as e:
+        logger.error("Failed to initialise agent registry: %s", e)
+
+
+async def handle_user_message(to: str, message: str) -> None:
+    """Route a user message to the chosen agent(s) and broadcast their replies."""
+    entry = push_feed("👤", "YOU", f"→ {to}: {message[:120]}", "blue")
+    await manager.broadcast({"type": "feed", "data": entry})
+
+    targets = list(AGENT_REGISTRY.items()) if to == "ALL" else (
+        [(to, AGENT_REGISTRY[to])] if to in AGENT_REGISTRY else []
+    )
+
+    context = (
+        "The user (your operator/owner) is speaking to you directly via the dashboard. "
+        "Stay fully in character and respond concisely."
+    )
+    for name, agent in targets:
+        try:
+            response = await agent.think(message, context=context)
+            text = response.text.strip()
+            entry = push_feed("💬", name, text[:400], "cyan")
+            await manager.broadcast({"type": "feed", "data": entry})
+        except Exception as e:
+            logger.error("Agent %s failed to respond: %s", name, e)
+            entry = push_feed("⚠️", name, f"[{type(e).__name__}: unavailable]", "red")
+            await manager.broadcast({"type": "feed", "data": entry})
+
+
 # ── State tracking ────────────────────────────────────────────────────────────
 
 company_state: dict[str, Any] = {
@@ -153,6 +212,8 @@ async def lifespan(app: FastAPI):
     bus.subscribe("company_event", on_company_event)
     bus.subscribe("output_ready", on_output)
 
+    _init_agent_registry()
+
     yield
 
 
@@ -242,7 +303,16 @@ async def websocket_endpoint(ws: WebSocket):
     }})
     try:
         while True:
-            await ws.receive_text()   # keep alive
+            data = await ws.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "user_msg":
+                    to = msg.get("to", "Marcus")
+                    message = msg.get("message", "").strip()
+                    if message:
+                        asyncio.create_task(handle_user_message(to, message))
+            except (json.JSONDecodeError, KeyError):
+                pass
     except WebSocketDisconnect:
         manager.disconnect(ws)
 
