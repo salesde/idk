@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -104,7 +105,6 @@ Return as JSON with file contents:
         # Basic markdown to HTML conversion (headings and paragraphs)
         html_content = content
         for i in range(6, 0, -1):
-            import re
             html_content = re.sub(
                 rf"^{'#' * i} (.+)$",
                 rf"<h{i}>\1</h{i}>",

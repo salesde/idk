@@ -27,7 +27,7 @@ class CMO(BaseAgent):
         super().__init__(soul=soul, model=settings.executive_model)
         self.bus = get_bus()
 
-    async def set_content_strategy(self, state: CompanyState) -> dict:
+    async def set_content_strategy(self, state: CompanyState) -> CompanyState:
         """Define the overall content strategy for all content departments."""
         await self.emit_thought("Time to dominate every feed. Setting the content strategy.", self.bus)
         self.soul.set_mood("excited")
@@ -85,7 +85,7 @@ Respond in JSON:
         )
 
         logger.info("CMO content strategy set across %d platforms", 2)
-        return data
+        return state  # Strategy communicated via message bus; state passes through
 
     async def review_content_performance(self, metrics: dict) -> dict:
         """Analyze content performance and adjust strategy."""

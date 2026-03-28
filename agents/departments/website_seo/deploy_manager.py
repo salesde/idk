@@ -47,6 +47,7 @@ class NetlifyDeployManager:
 
                 # Step 1: Create or get site
                 sites_response = await client.get(f"{self.API_BASE}/sites", headers=headers)
+                sites_response.raise_for_status()
                 existing = {s["name"]: s["id"] for s in sites_response.json()}
 
                 if site_name in existing:

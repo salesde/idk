@@ -15,7 +15,7 @@ from agents.executives.cmo import CMO
 from agents.executives.cto import CTO
 from core.config import get_settings
 from core.message_bus import get_bus
-from core.state import CompanyState
+from core.state import CompanyState, RevenueEvent
 from graphs.research_graph import run_research
 from graphs.department_graph import run_department_cycle
 
@@ -101,7 +101,13 @@ def build_company_graph(checkpointer=None):
             dept_events = result.get("revenue_events", [])
             for event in dept_events:
                 all_revenue_events.append(event)
-                cfo.record_event(type("E", (), event)())  # log to CFO ledger
+                cfo.record_event(RevenueEvent(
+                    department=event.get("department", "unknown"),
+                    event_type=event.get("event_type", "unknown"),
+                    description=event.get("description", ""),
+                    estimated_value_usd=event.get("estimated_value_usd", 0.0),
+                    metadata=event.get("metadata", {}),
+                ))
 
         return {
             **state,

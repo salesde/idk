@@ -77,17 +77,25 @@ async def save_heartbeat(pulse) -> None:
 
 
 async def log_revenue_event(event) -> None:
-    """Persist a revenue event."""
+    """Persist a revenue event (accepts dict or RevenueEvent dataclass)."""
     from db.models import RevenueRecord
     async with get_session() as session:
-        record = RevenueRecord(
-            department=event.department,
-            event_type=event.event_type,
-            description=event.description,
-            estimated_value_usd=event.estimated_value_usd,
-            metadata=event.metadata,
-            timestamp=event.timestamp,
-        )
+        if isinstance(event, dict):
+            record = RevenueRecord(
+                department=event.get("department", "unknown"),
+                event_type=event.get("event_type", "unknown"),
+                description=event.get("description", ""),
+                estimated_value_usd=event.get("estimated_value_usd", 0.0),
+                extra_data=event.get("metadata", {}),
+            )
+        else:
+            record = RevenueRecord(
+                department=event.department,
+                event_type=event.event_type,
+                description=event.description,
+                estimated_value_usd=event.estimated_value_usd,
+                extra_data=getattr(event, "metadata", {}),
+            )
         session.add(record)
 
 

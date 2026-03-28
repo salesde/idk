@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from core.config import get_settings
@@ -70,7 +71,8 @@ class YouTubeChannelManager:
                     body=request_body,
                     media_body=media,
                 )
-                response = insert_request.execute()
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(None, insert_request.execute)
                 video_id = response.get("id", "")
             else:
                 # No video file yet — create a draft metadata entry
@@ -106,7 +108,6 @@ class YouTubeChannelManager:
             })
 
         for i, script in enumerate(longform):
-            from datetime import timedelta
             days = (i * 7) // longform_per_week
             schedule.append({
                 "script": script,
