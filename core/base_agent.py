@@ -56,7 +56,13 @@ class BaseAgent:
         self._gemini_client = None
 
     def _is_claude(self) -> bool:
-        return self.model.startswith("claude")
+        if not self.model.startswith("claude"):
+            return False
+        # Don't try Claude if no API key — use Gemini fallback
+        if not self.settings.anthropic_api_key:
+            self.model = self.settings.executive_model
+            return False
+        return True
 
     def _get_anthropic(self):
         if not self.settings.anthropic_api_key:

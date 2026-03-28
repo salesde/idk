@@ -23,6 +23,12 @@ if [ ! -f ".venv/bin/python" ]; then
     PYTHON=".venv/bin/python"
 fi
 
+# ── Pull latest updates ───────────────────────────────────────────────────────
+if command -v git &>/dev/null && [ -d ".git" ]; then
+    echo "🔄 Pulling latest updates..."
+    git pull --quiet 2>/dev/null || true
+fi
+
 # ── Check for .env ────────────────────────────────────────────────────────────
 if [ ! -f ".env" ]; then
     cp .env.example .env
