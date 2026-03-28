@@ -40,7 +40,16 @@ class BaseAgent:
     def __init__(self, soul: AgentSoul, model: str | None = None):
         self.soul = soul
         self.settings = get_settings()
-        self.model = model or self.settings.worker_model
+        requested = model or self.settings.worker_model
+        # Auto-fallback: if a Claude model is requested but no API key is set, use Gemini
+        if requested.startswith("claude") and not self.settings.anthropic_api_key:
+            logger.warning(
+                "[%s] Claude model '%s' requested but ANTHROPIC_API_KEY not set — "
+                "falling back to %s",
+                soul.name, requested, self.settings.executive_model,
+            )
+            requested = self.settings.executive_model
+        self.model = requested
         self._dry_run = self.settings.dry_run
 
         self._anthropic_client = None
