@@ -50,6 +50,10 @@ class BaseAgent:
         return self.model.startswith("claude")
 
     def _get_anthropic(self):
+        if not self.settings.anthropic_api_key:
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY is not set. Either add it to .env or use a Gemini model instead."
+            )
         if self._anthropic_client is None:
             import anthropic
             self._anthropic_client = anthropic.AsyncAnthropic(

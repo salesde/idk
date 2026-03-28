@@ -45,8 +45,8 @@ class Settings(BaseSettings):
     heartbeat_interval: int = 30
     max_cost_per_cycle: float = 2.00
 
-    # Models
-    executive_model: str = "claude-sonnet-4-6"
+    # Models (all Gemini by default — no Anthropic API credits needed)
+    executive_model: str = "gemini-2.5-pro"
     research_model: str = "gemini-2.5-pro"
     worker_model: str = "gemini-2.0-flash"
 
