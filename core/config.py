@@ -1,7 +1,7 @@
 """Company-wide configuration loaded from .env."""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, model_validator
 
 
 class Settings(BaseSettings):
@@ -54,6 +54,22 @@ class Settings(BaseSettings):
     dry_run: bool = Field(default=False, alias="DRY_RUN")
     log_level: str = "INFO"
     log_file: str = "output/company.log"
+
+    @model_validator(mode="after")
+    def force_gemini_models(self) -> "Settings":
+        """Replace any Claude model with a Gemini equivalent.
+
+        Claude API requires separate paid API credits (different from Claude.ai Pro).
+        The system runs 100% on Gemini by default. If the user adds Anthropic credits
+        in the future they can manually set a claude-* model here.
+        """
+        if self.executive_model.startswith("claude"):
+            self.executive_model = "gemini-2.5-pro"
+        if self.research_model.startswith("claude"):
+            self.research_model = "gemini-2.5-pro"
+        if self.worker_model.startswith("claude"):
+            self.worker_model = "gemini-2.0-flash"
+        return self
 
 
 _settings: Settings | None = None
