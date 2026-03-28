@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexGen AI Corp — Setup</title>
+<style>
+  :root { --bg:#0d0d0f; --panel:#16161a; --border:#2a2a35; --accent:#7c5cfc; --green:#22c55e; --yellow:#f59e0b; --text:#e2e8f0; --dim:#64748b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+  .container { width:100%; max-width:560px; }
+  .logo { text-align:center; margin-bottom:32px; }
+  .logo-icon { font-size:48px; margin-bottom:12px; }
+  h1 { font-size:28px; font-weight:700; margin-bottom:6px; }
+  p { color:var(--dim); font-size:14px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:28px; margin-bottom:16px; }
+  .card h2 { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:13px; font-weight:500; color:var(--dim); margin-bottom:6px; }
+  .field input { width:100%; background:#0d0d0f; border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:14px; font-family:monospace; outline:none; transition:border-color 0.2s; }
+  .field input:focus { border-color:var(--accent); }
+  .field input.filled { border-color:var(--green); }
+  .hint { font-size:12px; color:var(--dim); margin-top:4px; }
+  .hint a { color:var(--accent); text-decoration:none; }
+  .hint a:hover { text-decoration:underline; }
+  .optional { font-size:11px; color:var(--dim); background:rgba(100,116,139,0.2); padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .required { font-size:11px; color:var(--yellow); background:rgba(245,158,11,0.15); padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .btn { width:100%; padding:14px; background:var(--accent); border:none; border-radius:10px; color:white; font-size:15px; font-weight:700; cursor:pointer; transition:opacity 0.2s; margin-top:8px; }
+  .btn:hover { opacity:0.9; }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .success { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:14px 18px; color:var(--green); font-weight:600; text-align:center; display:none; }
+  .status-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .key-status { font-size:12px; padding:4px 10px; border-radius:6px; }
+  .key-status.ok { background:rgba(34,197,94,0.15); color:var(--green); }
+  .key-status.missing { background:rgba(239,68,68,0.15); color:#ef4444; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">🏢</div>
+    <h1>API Key Setup</h1>
+    <p>Add your API keys to start the autonomous AI company</p>
+  </div>
+
+  <!-- Required keys -->
+  <div class="card">
+    <h2>🔑 Required Keys <span class="required">REQUIRED</span></h2>
+
+    <div class="field">
+      <label>Anthropic API Key (Claude — powers executives)</label>
+      <input type="password" id="anthropic" placeholder="sk-ant-..." oninput="checkFilled(this)">
+      <div class="hint">Get it free at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>Google API Key (Gemini — powers all workers)</label>
+      <input type="password" id="google" placeholder="AIza..." oninput="checkFilled(this)">
+      <div class="hint">Get it free at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>Tavily API Key (Web Search — powers research)</label>
+      <input type="password" id="tavily" placeholder="tvly-..." oninput="checkFilled(this)">
+      <div class="hint">Free tier: 1,000 searches/month at <a href="https://app.tavily.com" target="_blank">app.tavily.com</a></div>
+    </div>
+  </div>
+
+  <!-- Optional keys -->
+  <div class="card">
+    <h2>🔗 Platform Keys <span class="optional">OPTIONAL — for live posting</span></h2>
+    <p style="font-size:13px;color:var(--dim);margin-bottom:16px;">Without these, content is saved to files only. Add them when you're ready to post.</p>
+
+    <div class="field">
+      <label>TikTok Access Token</label>
+      <input type="password" id="tiktok_access_token" placeholder="..." oninput="checkFilled(this)">
+      <div class="hint">Requires TikTok developer app approval · <a href="https://developers.tiktok.com" target="_blank">developers.tiktok.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>YouTube Refresh Token</label>
+      <input type="password" id="youtube_refresh_token" placeholder="..." oninput="checkFilled(this)">
+      <div class="hint">Set up via Google Cloud Console · <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>Netlify Auth Token (for website deployment)</label>
+      <input type="password" id="netlify_auth_token" placeholder="..." oninput="checkFilled(this)">
+      <div class="hint"><a href="https://app.netlify.com/user/applications" target="_blank">app.netlify.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>Shopify Access Token (for dropshipping store)</label>
+      <input type="password" id="shopify_access_token" placeholder="..." oninput="checkFilled(this)">
+      <div class="hint">Create a private app in your Shopify admin</div>
+    </div>
+  </div>
+
+  <button class="btn" id="save-btn" onclick="saveKeys()">💾 Save Keys &amp; Launch Company</button>
+  <div class="success" id="success">✅ Keys saved! Redirecting to dashboard...</div>
+
+  <div id="current-status" style="margin-top:16px;"></div>
+</div>
+
+<script>
+function checkFilled(el) {
+  el.classList.toggle('filled', el.value.length > 5);
+}
+
+async function saveKeys() {
+  const keys = {
+    ANTHROPIC_API_KEY: document.getElementById('anthropic').value,
+    GOOGLE_API_KEY: document.getElementById('google').value,
+    TAVILY_API_KEY: document.getElementById('tavily').value,
+    TIKTOK_ACCESS_TOKEN: document.getElementById('tiktok_access_token').value,
+    YOUTUBE_REFRESH_TOKEN: document.getElementById('youtube_refresh_token').value,
+    NETLIFY_AUTH_TOKEN: document.getElementById('netlify_auth_token').value,
+    SHOPIFY_ACCESS_TOKEN: document.getElementById('shopify_access_token').value,
+  };
+
+  // Remove empty values
+  Object.keys(keys).forEach(k => { if (!keys[k]) delete keys[k]; });
+
+  if (!keys.ANTHROPIC_API_KEY || !keys.GOOGLE_API_KEY || !keys.TAVILY_API_KEY) {
+    alert('Please fill in the 3 required keys (Anthropic, Google, Tavily).');
+    return;
+  }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const res = await fetch('/api/keys', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(keys),
+  });
+
+  if (res.ok) {
+    document.getElementById('success').style.display = 'block';
+    btn.style.display = 'none';
+    setTimeout(() => window.location.href = '/', 1500);
+  } else {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Keys & Launch Company';
+    alert('Error saving keys. Check server logs.');
+  }
+}
+
+// Show current key status
+fetch('/api/check-keys').then(r=>r.json()).then(keys => {
+  const div = document.getElementById('current-status');
+  const entries = Object.entries(keys).map(([k,v]) =>
+    `<span class="key-status ${v?'ok':'missing'}">${v?'✓':'✗'} ${k}</span>`
+  ).join('');
+  div.innerHTML = `<div style="font-size:12px;color:var(--dim);margin-bottom:8px;">Current status:</div><div class="status-row">${entries}</div>`;
+  // Pre-fill none (passwords hidden for security)
+});
+</script>
+</body>
+</html>

@@ -27,9 +27,11 @@ dependencies = [
     "pydantic>=2.8.0",
     "pydantic-settings>=2.4.0",
     "python-dotenv>=1.0.0",
-    # Dashboard
-    "textual>=0.80.0",
-    "rich>=13.8.0",
+    # Web dashboard
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=13.0",
+    "jinja2>=3.1.0",
     # CLI
     "click>=8.1.0",
     # Utilities

@@ -1,194 +1,157 @@
 #!/usr/bin/env python3
 """
-NexGen AI Corp — Autonomous AI Company CLI
-
-Usage:
-    python main.py start              # Launch the full company (dashboard + agents)
-    python main.py start --dry-run    # Run without real API calls (mock mode)
-    python main.py research --dept tiktok  # Run research for one department
-    python main.py status             # Show current company state
-    python main.py dashboard          # Open dashboard without starting agents
+NexGen AI Corp — Autonomous AI Company
+Opens a browser dashboard. No terminal knowledge needed.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
-import threading
+import webbrowser
 from pathlib import Path
 
 import click
 
-# Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).parent))
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-    ],
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger("main")
 
 
 def setup_file_logging(log_file: str) -> None:
-    """Add file handler to root logger."""
     Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
-    logging.getLogger().addHandler(file_handler)
+    fh = logging.FileHandler(log_file)
+    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    logging.getLogger().addHandler(fh)
+    logging.getLogger().setLevel(logging.INFO)
 
 
-@click.group()
-def cli():
-    """NexGen AI Corp — Autonomous AI Revenue Company"""
-    pass
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    """NexGen AI Corp — just run this and the browser opens."""
+    if ctx.invoked_subcommand is None:
+        # Default: run the web UI
+        ctx.invoke(start)
 
 
 @cli.command()
-@click.option("--dry-run", is_flag=True, default=False, help="Run without real API calls")
-@click.option("--no-dashboard", is_flag=True, default=False, help="Run without terminal dashboard")
-def start(dry_run: bool, no_dashboard: bool):
-    """Start the autonomous AI company. Runs forever until stopped."""
+@click.option("--dry-run", is_flag=True, default=False)
+@click.option("--port", default=8080, help="Web server port")
+def start(dry_run: bool, port: int):
+    """Start the company — opens dashboard in your browser."""
 
-    # Load settings
     from core.config import get_settings
     settings = get_settings()
 
     if dry_run:
-        import os
         os.environ["DRY_RUN"] = "true"
-        click.echo("🔶 DRY RUN MODE — no real API calls will be made")
 
     setup_file_logging(settings.log_file)
 
-    click.echo(f"\n🏢 Starting {settings.company_name}")
-    click.echo(f"   Mission: {settings.company_mission}")
-    click.echo(f"   Models: Executive={settings.executive_model}, Research={settings.research_model}, Worker={settings.worker_model}")
-    click.echo(f"   Cycle interval: {settings.cycle_interval_minutes} minutes")
-    click.echo(f"   Dashboard: {'disabled' if no_dashboard else 'enabled'}")
-    click.echo("\n   Press CTRL+C to stop\n")
+    # Initialise DB directory
+    Path("output").mkdir(exist_ok=True)
 
-    async def run_agents():
-        """Run the company graph in the background."""
-        from graphs.company_graph import run_company
-        try:
-            await run_company(dry_run=dry_run)
-        except asyncio.CancelledError:
-            logger.info("Company stopped.")
-        except Exception as e:
-            logger.error("Company crashed: %s", e, exc_info=True)
+    print(f"\n🏢  {settings.company_name}")
+    print(f"    Starting on http://localhost:{port}")
+    print(f"    Opening your browser...\n")
+    print("    Press CTRL+C to stop.\n")
 
-    if no_dashboard:
-        # Simple asyncio run
-        try:
-            asyncio.run(run_agents())
-        except KeyboardInterrupt:
-            click.echo("\n👋 Company stopped.")
-    else:
-        # Run agents in a background thread, dashboard in the main thread
-        from dashboard.app import AICompanyDashboard
+    async def run():
+        # Init DB
+        from db.database import init_db
+        await init_db()
 
-        dashboard = AICompanyDashboard()
+        # Check if keys are set; if not open setup page
+        keys_ok = (
+            bool(settings.anthropic_api_key) and
+            bool(settings.google_api_key) and
+            bool(settings.tavily_api_key)
+        )
 
-        def run_agent_loop():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(run_agents())
-            except Exception as e:
-                logger.error("Agent loop error: %s", e)
-            finally:
-                loop.close()
+        url = f"http://localhost:{port}"
+        open_url = f"{url}/setup" if not keys_ok else url
 
-        agent_thread = threading.Thread(target=run_agent_loop, daemon=True)
-        agent_thread.start()
+        # Open browser after short delay so server is ready
+        async def open_browser():
+            await asyncio.sleep(1.5)
+            webbrowser.open(open_url)
 
-        try:
-            dashboard.run()
-        except KeyboardInterrupt:
-            pass
-        click.echo("\n👋 Dashboard closed. Agents stopping...")
+        asyncio.create_task(open_browser())
+
+        if keys_ok and not dry_run:
+            # Run web server + agents in parallel
+            from web.app import start_web_server
+            from graphs.company_graph import run_company
+            await asyncio.gather(
+                start_web_server(port=port),
+                run_company(dry_run=False),
+            )
+        else:
+            # Just serve the web UI (setup page or dry-run dashboard)
+            from web.app import start_web_server
+            await start_web_server(port=port)
+
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        print("\n👋 Stopped.")
 
 
 @cli.command()
-@click.option("--dept", default=None, help="Specific department to research (tiktok|youtube|website_seo|dropshipping)")
+@click.option("--dept", default=None)
 def research(dept: str | None):
-    """Run the research pipeline for one or all departments."""
-
+    """Run research for a department and save the report."""
     from core.config import get_settings
-    settings = get_settings()
-    setup_file_logging(settings.log_file)
-
-    departments = [dept] if dept else ["tiktok", "youtube", "website_seo", "dropshipping"]
+    setup_file_logging(get_settings().log_file)
 
     async def run():
         from graphs.research_graph import run_research
         from core.tools.file_manager import save_report
         import json
 
-        for d in departments:
-            click.echo(f"\n🔍 Researching {d}...")
+        depts = [dept] if dept else ["tiktok", "youtube", "website_seo", "dropshipping"]
+        for d in depts:
+            print(f"\n🔍 Researching {d}...")
             result = await run_research(d)
             confidence = result.get("confidence", 0)
             approved = result.get("approved", False)
             strategy = result.get("strategy", {})
-
-            click.echo(f"   ✅ Done | Confidence: {confidence:.0%} | Approved: {approved}")
+            print(f"   ✅ Confidence: {confidence:.0%} | Approved: {approved}")
             if strategy:
-                est = strategy.get("estimated_monthly_revenue_usd", 0)
-                click.echo(f"   Est. monthly revenue: ${est:,.0f}")
-                click.echo(f"   Trend: {strategy.get('trend_direction', 'unknown')}")
-
-            # Save report
-            report_content = f"# Research Report: {d}\n\n"
-            report_content += f"**Confidence:** {confidence:.0%}\n"
-            report_content += f"**Approved:** {approved}\n\n"
-            report_content += f"## Analysis\n\n{result.get('analysis', 'N/A')}\n\n"
-            report_content += f"## Strategy\n\n```json\n{json.dumps(strategy, indent=2, default=str)}\n```\n"
-            path = save_report(f"research_{d}", report_content, department=d)
-            click.echo(f"   Report saved: {path}")
+                print(f"   Est. monthly: ${strategy.get('estimated_monthly_revenue_usd', 0):,.0f}")
+            content = f"# Research: {d}\n\nConfidence: {confidence:.0%}\n\n{result.get('analysis','')}\n\n```json\n{json.dumps(strategy, indent=2, default=str)}\n```"
+            path = save_report(f"research_{d}", content, department=d)
+            print(f"   Saved: {path}")
 
     asyncio.run(run())
 
 
 @cli.command()
 def status():
-    """Show the current company database status."""
-
+    """Print current company stats."""
     async def run():
         from db.database import get_session
-        from db.models import AgentRecord, ContentItem, RevenueRecord, TaskRecord
+        from db.models import ContentItem, RevenueRecord, TaskRecord
         from sqlalchemy import func, select
-
         try:
-            async with get_session() as session:
-                agent_count = (await session.execute(select(func.count()).select_from(AgentRecord))).scalar()
-                task_count = (await session.execute(select(func.count()).select_from(TaskRecord))).scalar()
-                content_count = (await session.execute(select(func.count()).select_from(ContentItem))).scalar()
-                revenue_total = (await session.execute(select(func.sum(RevenueRecord.estimated_value_usd)))).scalar() or 0.0
-
-                click.echo("\n📊 Company Status")
-                click.echo(f"   Agents registered: {agent_count}")
-                click.echo(f"   Tasks recorded:    {task_count}")
-                click.echo(f"   Content items:     {content_count}")
-                click.echo(f"   Total est. revenue: ${revenue_total:.2f}")
+            async with get_session() as s:
+                tasks = (await s.execute(select(func.count()).select_from(TaskRecord))).scalar()
+                content = (await s.execute(select(func.count()).select_from(ContentItem))).scalar()
+                revenue = (await s.execute(select(func.sum(RevenueRecord.estimated_value_usd)))).scalar() or 0.0
+            print(f"\n📊 Company Status")
+            print(f"   Tasks: {tasks}  |  Content: {content}  |  Revenue: ${revenue:.2f}")
         except Exception as e:
-            click.echo(f"   ❌ Could not read DB: {e}")
-            click.echo("   (Run 'python main.py start' first to initialize)")
+            print(f"   No data yet. Start the company first.")
 
     asyncio.run(run())
-
-
-@cli.command()
-def dashboard():
-    """Open the dashboard without starting agents (view-only mode)."""
-    from dashboard.app import AICompanyDashboard
-    AICompanyDashboard().run()
 
 
 if __name__ == "__main__":

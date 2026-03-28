@@ -71,11 +71,16 @@ open -e .env 2>/dev/null || nano .env
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
+
+# Make the launcher double-clickable
+chmod +x "Start NexGen AI Corp.command" 2>/dev/null || true
+
 echo "✅ Setup complete!"
 echo ""
-echo "When you've filled in your API keys, run:"
+echo "═══════════════════════════════════════════"
+echo "  HOW TO START:"
 echo ""
-echo "   source .venv/bin/activate"
-echo "   python main.py start --dry-run    # Test without real API calls"
-echo "   python main.py start              # Launch the full company"
+echo "  Double-click:  'Start NexGen AI Corp.command'"
+echo "  Your browser opens automatically."
+echo "═══════════════════════════════════════════"
 echo ""
