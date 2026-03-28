@@ -45,9 +45,9 @@ class Settings(BaseSettings):
     heartbeat_interval: int = 30
     max_cost_per_cycle: float = 2.00
 
-    # Models (all Gemini by default — no Anthropic API credits needed)
-    executive_model: str = "gemini-2.5-pro"
-    research_model: str = "gemini-2.5-pro"
+    # Models — gemini-2.0-flash works on free tier; 2.5-pro requires paid billing
+    executive_model: str = "gemini-2.0-flash"
+    research_model: str = "gemini-2.0-flash"
     worker_model: str = "gemini-2.0-flash"
 
     # Runtime
@@ -64,9 +64,9 @@ class Settings(BaseSettings):
         in the future they can manually set a claude-* model here.
         """
         if self.executive_model.startswith("claude"):
-            self.executive_model = "gemini-2.5-pro"
+            self.executive_model = "gemini-2.0-flash"
         if self.research_model.startswith("claude"):
-            self.research_model = "gemini-2.5-pro"
+            self.research_model = "gemini-2.0-flash"
         if self.worker_model.startswith("claude"):
             self.worker_model = "gemini-2.0-flash"
         return self

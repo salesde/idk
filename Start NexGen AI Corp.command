@@ -27,6 +27,10 @@ fi
 if command -v git &>/dev/null && [ -d ".git" ]; then
     echo "🔄 Pulling latest updates..."
     git pull --quiet 2>/dev/null || true
+    # Reinstall packages in case dependencies changed
+    if [ -f ".venv/bin/pip" ]; then
+        .venv/bin/pip install -e . -q 2>/dev/null || true
+    fi
 fi
 
 # ── Check for .env ────────────────────────────────────────────────────────────

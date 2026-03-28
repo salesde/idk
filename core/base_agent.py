@@ -78,9 +78,8 @@ class BaseAgent:
 
     def _get_gemini(self):
         if self._gemini_client is None:
-            import google.generativeai as genai
-            genai.configure(api_key=self.settings.google_api_key)
-            self._gemini_client = genai.GenerativeModel(self.model)
+            from google import genai
+            self._gemini_client = genai.Client(api_key=self.settings.google_api_key)
         return self._gemini_client
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -130,21 +129,36 @@ class BaseAgent:
     async def _call_gemini(
         self, system: str, prompt: str, temperature: float, max_tokens: int
     ) -> LLMResponse:
+        from google import genai as genai_module
+        from google.genai import types as genai_types
         client = self._get_gemini()
         full = f"{system}\n\n{prompt}"
         loop = asyncio.get_event_loop()
-        # google-generativeai is sync; run in thread pool
-        response = await loop.run_in_executor(
-            None,
-            lambda: client.generate_content(
-                full,
-                generation_config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_tokens,
-                },
-            ),
-        )
-        text = response.text
+        model = self.model
+
+        def _generate(m: str) -> str:
+            resp = client.models.generate_content(
+                model=m,
+                contents=full,
+                config=genai_types.GenerateContentConfig(
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                ),
+            )
+            return resp.text
+
+        try:
+            text = await loop.run_in_executor(None, lambda: _generate(model))
+        except Exception as e:
+            # Fall back to gemini-2.0-flash if quota/model error on pro models
+            if "ResourceExhausted" in type(e).__name__ or "quota" in str(e).lower() or "429" in str(e):
+                logger.warning("[%s] %s quota hit, falling back to gemini-2.0-flash", self.soul.name, model)
+                self.model = "gemini-2.0-flash"
+                self._gemini_client = None  # reset client so model change takes effect
+                text = await loop.run_in_executor(None, lambda: _generate("gemini-2.0-flash"))
+            else:
+                raise
+
         logger.debug("[%s/%s] Gemini response received", self.soul.name, self.model)
         return LLMResponse(text=text, model=self.model)
 
